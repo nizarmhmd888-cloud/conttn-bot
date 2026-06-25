@@ -1,6 +1,7 @@
 import os
 import logging
 import requests
+import re
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -22,11 +23,9 @@ def get_settings(chat_id):
     return CLIENTS.get(str(chat_id), CLIENTS["default"])
 
 def build_prompt(text, s):
-    lang_note = "اكتب جميع المخرجات باللغة العربية الفصحى المبسطة." if s["lang"] == "ar" else "Write all outputs in clear English."
-    tone_note = "استخدم نبرة تحفيزية وملهمة." if s["tone"] == "motivational" else "استخدم نبرة رسمية واحترافية."
     return f"""أنت خبير استراتيجية محتوى.
-{lang_note}
-{tone_note}
+اكتب جميع المخرجات باللغة العربية الفصحى المبسطة.
+استخدم نبرة تحفيزية وملهمة.
 النيش: {s["niche"]}
 CTA: {s["cta"]}
 
@@ -58,7 +57,6 @@ def call_groq(prompt):
     return r.json()["choices"][0]["message"]["content"]
 
 def extract(text, tag):
-    import re
     m = re.search(rf"\[{tag}\]([\s\S]*?)(?=\[(?:LINKEDIN|TWITTER|INSTAGRAM|WHATSAPP)\]|$)", text, re.I)
     return m.group(1).strip() if m else "—"
 
@@ -81,12 +79,9 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ خطأ: {e}")
 
-def main():
+if __name__ == "__main__":
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
     print("✅ البوت يعمل...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
-
-if __name__ == "__main__":
-    main()
