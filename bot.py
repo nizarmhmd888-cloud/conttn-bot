@@ -1,33 +1,29 @@
 import os
+import re
 import logging
 import requests
-import re
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+import telebot
 
 logging.basicConfig(level=logging.INFO)
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 
-CLIENTS = {
-    "default": {
-        "lang": "ar",
-        "tone": "motivational",
-        "niche": "استراتيجية المحتوى",
-        "cta": "تواصل معي للحصول على استشارة مجانية",
-    },
+bot = telebot.TeleBot(BOT_TOKEN)
+
+SETTINGS = {
+    "lang": "ar",
+    "tone": "motivational",
+    "niche": "استراتيجية المحتوى",
+    "cta": "تواصل معي للحصول على استشارة مجانية",
 }
 
-def get_settings(chat_id):
-    return CLIENTS.get(str(chat_id), CLIENTS["default"])
-
-def build_prompt(text, s):
+def build_prompt(text):
     return f"""أنت خبير استراتيجية محتوى.
 اكتب جميع المخرجات باللغة العربية الفصحى المبسطة.
 استخدم نبرة تحفيزية وملهمة.
-النيش: {s["niche"]}
-CTA: {s["cta"]}
+النيش: {SETTINGS["niche"]}
+CTA: {SETTINGS["cta"]}
 
 النص:
 \"\"\"{text}\"\"\"
@@ -60,28 +56,23 @@ def extract(text, tag):
     m = re.search(rf"\[{tag}\]([\s\S]*?)(?=\[(?:LINKEDIN|TWITTER|INSTAGRAM|WHATSAPP)\]|$)", text, re.I)
     return m.group(1).strip() if m else "—"
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "👋 أهلاً! أنا وكيل إعادة التوظيف.\n\nأرسل لي أي نص وسأحوله إلى:\n💼 LinkedIn\n𝕏 Twitter\n📸 Instagram\n💬 WhatsApp"
-    )
+@bot.message_handler(commands=["start"])
+def start(message):
+    bot.reply_to(message, "👋 أهلاً! أنا وكيل إعادة التوظيف.\n\nأرسل لي أي نص وسأحوله إلى:\n💼 LinkedIn\n𝕏 Twitter\n📸 Instagram\n💬 WhatsApp")
 
-async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
+@bot.message_handler(func=lambda m: True)
+def handle(message):
+    text = message.text.strip()
     if len(text) < 30:
-        await update.message.reply_text("⚠️ النص قصير جداً.")
+        bot.reply_to(message, "⚠️ النص قصير جداً.")
         return
-    await update.message.reply_text("⏳ جارٍ التوظيف...")
+    bot.reply_to(message, "⏳ جارٍ التوظيف...")
     try:
-        s = get_settings(update.effective_chat.id)
-        output = call_groq(build_prompt(text, s))
+        output = call_groq(build_prompt(text))
         for label, tag in [("💼 LinkedIn", "LINKEDIN"), ("𝕏 Twitter", "TWITTER"), ("📸 Instagram", "INSTAGRAM"), ("💬 WhatsApp", "WHATSAPP")]:
-            await update.message.reply_text(f"*{label}*\n\n{extract(output, tag)}", parse_mode="Markdown")
+            bot.send_message(message.chat.id, f"{label}\n\n{extract(output, tag)}")
     except Exception as e:
-        await update.message.reply_text(f"❌ خطأ: {e}")
+        bot.reply_to(message, f"❌ خطأ: {e}")
 
-if __name__ == "__main__":
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
-    print("✅ البوت يعمل...")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+print("✅ البوت يعمل...")
+bot.infinity_polling()
