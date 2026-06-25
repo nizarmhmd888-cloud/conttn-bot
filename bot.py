@@ -3,17 +3,19 @@ import re
 import logging
 import requests
 import telebot
+from telebot import types
+from flask import Flask, request
 
 logging.basicConfig(level=logging.INFO)
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
 
 bot = telebot.TeleBot(BOT_TOKEN)
+app = Flask(__name__)
 
 SETTINGS = {
-    "lang": "ar",
-    "tone": "motivational",
     "niche": "استراتيجية المحتوى",
     "cta": "تواصل معي للحصول على استشارة مجانية",
 }
@@ -74,5 +76,23 @@ def handle(message):
     except Exception as e:
         bot.reply_to(message, f"❌ خطأ: {e}")
 
-print("✅ البوت يعمل...")
-bot.infinity_polling()
+@app.route(f"/{BOT_TOKEN}", methods=["POST"])
+def webhook():
+    json_str = request.get_data().decode("UTF-8")
+    update = types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return "OK", 200
+
+@app.route("/")
+def index():
+    return "Bot is running!", 200
+
+if __name__ == "__main__":
+    bot.remove_webhook()
+    if WEBHOOK_URL:
+        bot.set_webhook(url=f"{WEBHOOK_URL}/{BOT_TOKEN}")
+        print(f"✅ Webhook set: {WEBHOOK_URL}/{BOT_TOKEN}")
+        app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    else:
+        print("✅ البوت يعمل بالـ polling...")
+        bot.infinity_polling()
