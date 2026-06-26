@@ -42,7 +42,10 @@ CTA: {SETTINGS["cta"]}
 (كابشن + 8 هاشتاقات)
 
 [WHATSAPP]
-(رسالة قصيرة 60-80 كلمة)"""
+(رسالة قصيرة 60-80 كلمة)
+
+[THREADS]
+(منشور محادثاتي 100-150 كلمة، أسلوب قريب، بدون هاشتاقات كثيرة)"""
 
 def call_groq(prompt):
     r = requests.post(
@@ -55,7 +58,7 @@ def call_groq(prompt):
     return r.json()["choices"][0]["message"]["content"]
 
 def extract(text, tag):
-    m = re.search(rf"\[{tag}\]([\s\S]*?)(?=\[(?:LINKEDIN|TWITTER|INSTAGRAM|WHATSAPP)\]|$)", text, re.I)
+    m = re.search(rf"\[{tag}\]([\s\S]*?)(?=\[(?:LINKEDIN|TWITTER|INSTAGRAM|WHATSAPP|THREADS)\]|$)", text, re.I)
     return m.group(1).strip() if m else "—"
 
 @bot.message_handler(commands=["start"])
@@ -71,7 +74,7 @@ def handle(message):
     bot.reply_to(message, "⏳ جارٍ التوظيف...")
     try:
         output = call_groq(build_prompt(text))
-        for label, tag in [("💼 LinkedIn", "LINKEDIN"), ("𝕏 Twitter", "TWITTER"), ("📸 Instagram", "INSTAGRAM"), ("💬 WhatsApp", "WHATSAPP")]:
+        for label, tag in [("💼 LinkedIn", "LINKEDIN"), ("𝕏 Twitter", "TWITTER"), ("📸 Instagram", "INSTAGRAM"), ("💬 WhatsApp", "WHATSAPP"), ("🧵 Threads", "THREADS")]:
             bot.send_message(message.chat.id, f"{label}\n\n{extract(output, tag)}")
     except Exception as e:
         bot.reply_to(message, f"❌ خطأ: {e}")
