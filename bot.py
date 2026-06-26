@@ -61,6 +61,23 @@ def extract(text, tag):
     m = re.search(rf"\[{tag}\]([\s\S]*?)(?=\[(?:LINKEDIN|TWITTER|INSTAGRAM|WHATSAPP|THREADS)\]|$)", text, re.I)
     return m.group(1).strip() if m else "—"
 
+LEAD_KEYWORDS = ["claude", "كلود", "كورس", "تعلم"]
+
+WELCOME_MSG = """👋 أهلاً بك!
+
+🎓 كورسات Claude AI المجانية من Anthropic تعلّمك كيف تستخدم الذكاء الاصطناعي باحتراف.
+
+🔗 ابدأ الآن مجاناً:
+https://www.anthropic.com/learn
+
+---
+نزار | استراتيجي محتوى
+للاستفسار: تواصل معي مباشرة ✉️"""
+
+@bot.message_handler(func=lambda m: any(k in m.text.lower() for k in LEAD_KEYWORDS))
+def lead_handler(message):
+    bot.send_message(message.chat.id, WELCOME_MSG)
+
 @bot.message_handler(commands=["start"])
 def start(message):
     bot.reply_to(message, "👋 أهلاً! أنا وكيل إعادة التوظيف.\n\nأرسل لي أي نص وسأحوله إلى:\n💼 LinkedIn\n𝕏 Twitter\n📸 Instagram\n💬 WhatsApp")
